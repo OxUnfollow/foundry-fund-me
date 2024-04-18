@@ -10,9 +10,14 @@ contract FundMeTest is Test {
 
     FundMe fundMe;
 
+    address USER = makeAddr("user");
+    uint256 constant SEND_VALUE = 0.1 ether;
+    uint256 constant STARTING_VALUE = 10 ether;
+
     function setUp() external {
         DeployFundMe deployFundMe = new DeployFundMe();
         fundMe = deployFundMe.run();
+        vm.deal(USER, STARTING_VALUE);        
     }
 
     function testMinimumDollarIsFive() public view {
@@ -28,6 +33,35 @@ contract FundMeTest is Test {
         console.log(version);
         assertEq(version, 4);
 
+    }
+
+    function testFundFailWithoutEnoughETH() public {
+        vm.expectRevert();
+        fundMe.fund();
+    }
+
+    function testFundUpdatesFundedDataStructure() public {
+        vm.prank(USER);
+        fundMe.fund{value: SEND_VALUE }();
+        uint256 amountFunded = fundMe.getAddressToAmountFunded(address(USER));
+        assertEq(amountFunded, SEND_VALUE);
+    }
+
+    function testAddsFunderToArrayOfFunders() public {
+        vm.prank(USER);
+        fundMe.fund{value: SEND_VALUE}();
+
+        address funder = fundMe.getFunder(0);
+        assertEq(funder, USER);
+    }
+
+    function testOnlyOwnerCanWithDraw() public {
+         vm.prank(USER);
+        fundMe.fund{value: SEND_VALUE}();
+
+        vm.expectRevert();
+        vm.prank(USER);
+        fundMe.withdraw();
     }
 
 }
